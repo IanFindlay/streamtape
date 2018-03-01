@@ -32,8 +32,8 @@ time_list = record_time.split(':')
 start_hour = int(time_list[0])
 start_minutes = int(time_list[1])
 
-print('Waiting for the scheduled time (' + str(start_hour) + ':'
-      + str(start_minutes) +'). Recording of ' + channel +
+print('Waiting for the scheduled time (' + str(start_hour).zfill(2) + ':'
+      + str(start_minutes).zfill(2) +'). Recording of ' + channel +
       ' will begin then...')
 
 while True:
