@@ -17,7 +17,7 @@ def time_reached():
     date = datetime.datetime.now()
     hour = int(date.strftime('%-H'))
     minutes = int(date.strftime('%-M'))
-    if hour > start_hour:
+    if hour == start_hour + 1:
         return True
     elif hour == start_hour and minutes >= start_minutes:
         return True
@@ -26,7 +26,7 @@ def time_reached():
 def start_stream(channel_name):
     """Opens the channel_name Twitch stream in VLC through the Terminal."""
     # Open Terminal
-    pyautogui.hotkey('ctrl', 'shift', 't')
+    pyautogui.hotkey('ctrl', 'alt', 't')
     time.sleep(3)
     # Enter required Streamlink information
     pyautogui.typewrite('streamlink twitch.tv/{} best'.format(channel_name))
