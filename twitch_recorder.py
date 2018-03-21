@@ -29,7 +29,6 @@ def start_stream(channel_name):
     # Enter required Streamlink information
     pyautogui.typewrite('streamlink twitch.tv/{} best'.format(channel_name))
     pyautogui.press('enter')
-    time.sleep(30)
 
 
 def check_and_rec():
@@ -61,6 +60,7 @@ while True:
 print('Attempting to start and record the stream...')
 
 start_stream(channel)
+time.sleep(30)
 
 attempts = 1
 while True:
