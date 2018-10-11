@@ -1,24 +1,35 @@
 #!/usr/bin/env python3
 
-"""Automatically loads a Twitch stream using Streamlink and records it with VLC.
-Takes two sys arguments: Name of channel, Time to start recording (HH:MM)
-e.g. twitch-recorder chess 18:00
+"""Automatically load a Twitch stream with Streamlink and record it with VLC.
+
+Takes two sys arguments:
+    Name of Twitch channel:
+    Time to start recording: In local time and formatted HH:MM
+
+e.g. twitch_recorder.py chess 18:00
 """
 
 import time
-import datetime
+import datetime as dt
 import sys
 import pyautogui
 import psutil
 
 
-def time_reached():
-    """Check if a time has been reached/passed."""
-    date = datetime.datetime.now()
-    hour = int(date.strftime('%-H'))
-    minutes = int(date.strftime('%-M'))
-    if hour == start_hour and minutes >= start_minutes:
-        return True
+def calc_start(start_time):
+    """Return a datetime object representing the start_time compared to now."""
+    hour = int(start_time[0: 2])
+    minutes = int(start_time[3: 5])
+    now = dt.datetime.now()
+    # Need to change the day to tommorow if the hour is less than current one
+    if now.hour > hour:
+        day = now.day + 1
+    else:
+        day = now.day
+
+    dt_time = dt.datetime(now.year, now.month, day, hour=hour, minute=minutes)
+
+    return dt_time
 
 
 def start_stream(channel_name):
@@ -33,7 +44,7 @@ def start_stream(channel_name):
 
 
 def check_and_rec():
-    """Checks if VLC has sucessfully launched the stream then begins recording."""
+    """Check if VLC has sucessfully launched then begin recording."""
     for pid in psutil.pids():
         p = psutil.Process(pid)
         if p.name() == "vlc":
@@ -42,37 +53,33 @@ def check_and_rec():
             return True
 
 
-channel = sys.argv[1]
-record_time = sys.argv[2]
-time_list = record_time.split(':')
-start_hour = int(time_list[0])
-start_minutes = int(time_list[1])
+if __name__ == '__main__':
 
-print('Waiting for the scheduled time (' + str(start_hour).zfill(2) + ':'
-      + str(start_minutes).zfill(2) +'). Recording of ' + channel +
-      ' will begin then...')
+    channel = sys.argv[1]
+    record_time = sys.argv[2]
 
-while True:
-    if time_reached():
-        break
-    else:
-        time.sleep(60)
+    print('Recording of {} will begin around {}'.format(channel, record_time))
 
-print('Attempting to start and record the stream...')
+    start_time = calc_start(record_time)
 
-start_stream(channel)
+    while dt.datetime.now() < start_time:
+        time.sleep(10)
 
-attempts = 1
-while True:
-    if check_and_rec():
-        print("Recording...")
-        break
-    elif attempts == 20:
-        print("The Stream has failed to start {} times "
-              "- Program shutting Down.".format(str(attempts)))
-        break
-    else:
-        print("The stream hasn't started sucessfully - Trying again in 30s.")
-        time.sleep(30)
-        attempts += 1
-        start_stream(channel)
+    print('Attempting to start and record the stream...')
+
+    start_stream(channel)
+
+    attempts = 1
+    while True:
+        if check_and_rec():
+            print("Recording...")
+            break
+        elif attempts == 20:
+            print("The Stream has failed to start {} times "
+                  "- Program shutting Down.".format(str(attempts)))
+            break
+        else:
+            print("The stream hasn't started - Trying again in 30s.")
+            time.sleep(30)
+            attempts += 1
+            start_stream(channel)
