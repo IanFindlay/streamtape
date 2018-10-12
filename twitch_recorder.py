@@ -11,46 +11,25 @@ e.g. twitch_recorder.py chess 18:00
 
 import time
 import datetime as dt
+import subprocess
 import sys
-import pyautogui
-import psutil
 
 
 def calc_start(start_time):
-    """Return a datetime object representing the start_time compared to now."""
+    """Return datetime object of the start_time calculate from current time."""
     hour = int(start_time[0: 2])
     minutes = int(start_time[3: 5])
     now = dt.datetime.now()
-    # Need to change the day to tommorow if the hour is less than current one
-    if now.hour > hour:
-        day = now.day + 1
-    else:
-        day = now.day
+    dt_time = dt.datetime(now.year, now.month, now.day,
+                          hour=hour, minute=minutes)
 
-    dt_time = dt.datetime(now.year, now.month, day, hour=hour, minute=minutes)
+    # Need to change the day to tommorow if time has already passed
+    if dt_time < now:
+        day = now.day + 1
+        dt_time = dt.datetime(now.year, now.month, day,
+                              hour=hour, minute=minutes)
 
     return dt_time
-
-
-def start_stream(channel_name):
-    """Opens the channel_name Twitch stream in VLC through the Terminal."""
-    # Open Terminal
-    pyautogui.hotkey('ctrl', 'alt', 't')
-    time.sleep(3)
-    # Enter required Streamlink information
-    pyautogui.typewrite('streamlink twitch.tv/{} best'.format(channel_name))
-    pyautogui.press('enter')
-    time.sleep(30)
-
-
-def check_and_rec():
-    """Check if VLC has sucessfully launched then begin recording."""
-    for pid in psutil.pids():
-        p = psutil.Process(pid)
-        if p.name() == "vlc":
-            # Record with VLC using Hotkey
-            pyautogui.hotkey('shift', 'r')
-            return True
 
 
 if __name__ == '__main__':
@@ -65,21 +44,14 @@ if __name__ == '__main__':
     while dt.datetime.now() < start_time:
         time.sleep(10)
 
-    print('Attempting to start and record the stream...')
+    print('Starting recording of {}'.format(channel))
 
-    start_stream(channel)
+    day = dt.datetime.now().strftime('%y-%m-%d')
+    filename = '{}-{}'.format(channel, day)
+    subprocess.call(['streamlink', 'twitch.tv/{}'.format(channel),
+                     'best', '-o', 'saves/{}'.format(filename),
+                     '--retry-streams', '30', '--retry-max', '10',
+                     '--retry-open', '5'])
 
-    attempts = 1
-    while True:
-        if check_and_rec():
-            print("Recording...")
-            break
-        elif attempts == 20:
-            print("The Stream has failed to start {} times "
-                  "- Program shutting Down.".format(str(attempts)))
-            break
-        else:
-            print("The stream hasn't started - Trying again in 30s.")
-            time.sleep(30)
-            attempts += 1
-            start_stream(channel)
+    # Shutdown
+    subprocess.call(['shutdown'])
