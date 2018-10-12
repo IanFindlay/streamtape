@@ -9,10 +9,12 @@ Takes two sys arguments:
 e.g. twitch_recorder.py chess 18:00
 """
 
-import time
+import configparser
 import datetime as dt
+import os
 import subprocess
 import sys
+import time
 
 
 def calc_start(start_time):
@@ -32,7 +34,27 @@ def calc_start(start_time):
     return dt_time
 
 
+def get_setting(section, option):
+    """Retrieve and return a value from settings."""
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    value = config.get(section, option)
+
+    return value
+
+
 if __name__ == '__main__':
+
+    # Get settings
+    path = get_setting('Download', 'Path')
+    shutdown = get_setting('Download', 'Shutdown')
+    delay = get_setting('Retry', 'Delay')
+    attempts = get_setting('Retry', 'Attempts')
+    record = get_setting('Retry', 'Record')
+
+    # Create path if it doesn't exist
+    if not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
 
     channel = sys.argv[1]
     record_time = sys.argv[2]
@@ -46,12 +68,12 @@ if __name__ == '__main__':
 
     print('Starting recording of {}'.format(channel))
 
-    day = dt.datetime.now().strftime('%y-%m-%d')
-    filename = '{}-{}'.format(channel, day)
+    day = dt.datetime.now().strftime('%y.%m.%d')
+    filename = '{}-{}-{}'.format(channel, day, record_time)
     subprocess.call(['streamlink', 'twitch.tv/{}'.format(channel),
-                     'best', '-o', 'saves/{}'.format(filename),
-                     '--retry-streams', '30', '--retry-max', '10',
-                     '--retry-open', '5'])
+                     'best', '-o', '{}/{}'.format(path, filename),
+                     '--retry-streams', delay, '--retry-max', attempts,
+                     '--retry-open', record])
 
-    # Shutdown
-    subprocess.call(['shutdown'])
+    if shutdown.lower() in ('y', 'yes'):
+        subprocess.call(['shutdown'])
