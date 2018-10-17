@@ -22,7 +22,15 @@ import time
 
 
 def strtime_datetime(str_time):
-    """Return datetime object of given time calculated from current time."""
+    """Compare argument to current time to calculate datetime it represents.
+
+    Args:
+        str_time: Local time in HH:MM format where ':' can be any separator
+
+    Return:
+        Datetime object
+
+    """
     hour = int(str_time[0: 2])
     minutes = int(str_time[3: 5])
     now = dt.datetime.now()
@@ -38,8 +46,15 @@ def strtime_datetime(str_time):
     return dt_time
 
 
-def start_recording(channel, path, filename=None):
-    """Start recording channel using Streamlink and save file to path."""
+def start_recording(channel, path, filename):
+    """Start recording channel using Streamlink and save file to path.
+
+    Args:
+        channel: The part after 'twitch.tv/' of the desired channel
+        path: Absolute file path to the save directory
+        filename: Name to save the file under with no extension specified
+
+    """
     wait = get_setting('Connecting', 'Wait')
     attempts = get_setting('Connecting', 'Attempts')
     rec_attempts = get_setting('Recording', 'Attempts')
@@ -61,7 +76,7 @@ def start_recording(channel, path, filename=None):
 
 
 def get_setting(section, option):
-    """Retrieve and return a value from settings file."""
+    """Return the value of an option in a section of the settings file."""
     config = configparser.ConfigParser()
     config.read('settings.ini')
     value = config.get(section, option)
@@ -71,7 +86,6 @@ def get_setting(section, option):
 
 def main():
     """Parse command line arguments and coordinate stream recording."""
-    # Process sys arguments
     parser = argparse.ArgumentParser(description="Twitch stream recorder")
     parser.add_argument('channel', help="Name of the Twitch channel to record")
     parser.add_argument('start_time', help="Time to start recording (HH:MM)")
@@ -84,7 +98,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Create save path directory if it doesn't exist
     path = get_setting('Download', 'Path')
     if not os.path.isdir(path):
         os.makedirs(path, exist_ok=True)
@@ -94,21 +107,19 @@ def main():
 
     print("Recording of {} will begin around {}".format(channel, start_time))
 
-    start_dt = strtime_datetime(start_time)
+    # Calculate before recording so it isn't set to next day when stream ends
+    if args.reconnect:
+        end_dt = strtime_datetime(args.reconnect)
 
+    start_dt = strtime_datetime(start_time)
     while dt.datetime.now() < start_dt:
         time.sleep(10)
 
-    if args.filename:
-        start_recording(channel, path, filename=args.filename)
-    else:
-        start_recording(channel, path)
+    start_recording(channel, path, args.filename)
 
-    # If reconnect argument given, keep trying to record stream until end_time
     if args.reconnect:
-        end_dt = strtime_datetime(args.reconnect)
         while dt.datetime.now() < end_dt:
-            start_recording(channel, path)
+            start_recording(channel, path, None)
 
     if args.shutdown:
         subprocess.call(['shutdown'])
