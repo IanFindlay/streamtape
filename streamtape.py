@@ -76,7 +76,7 @@ def start_recording(channel, path, filename):
 
 
 def get_setting(section, option):
-    """Return the value of an option in a section of the settings file."""
+    """Return value of the option in specified section of the settings file."""
     config = configparser.ConfigParser()
     config.read('settings.ini')
     value = config.get(section, option)
