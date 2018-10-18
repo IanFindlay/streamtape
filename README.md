@@ -25,4 +25,4 @@ For example:
 ```
 python3 streamtape.py channel 03:00 -f my-download -r 07:00 -s
 ```
-Will record the stream at twitch.tv/channel at 03:00 local time. Save the downloaded file as my-download.ts and attempt to reconnect to the stream if the connection drops anytime before 07:00.
+Will record the stream at twitch.tv/channel at 03:00 local time. Save the downloaded file as my-download.ts. Attempt to reconnect to the stream if the connection drops anytime before 07:00 and shutdown the computer once the stream ends after 07:00.
