@@ -1,6 +1,6 @@
 # Streamtape
 
-## Name a channel, set a time and let Streamtape take over.
+## Name a channel, set a time and let Streamtape take over
 
 Future development may make Streamtape a bit more substantial, but for now here's why you might like to wrap some Streamtape around your [Streamlink](https://github.com/streamlink/streamlink):
 
