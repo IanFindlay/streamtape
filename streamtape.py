@@ -4,9 +4,10 @@
 
 Args:
     Name of Twitch channel
-    Time to start recording(HH:MM)
+    Time to start recording in local, 24hr time formatted (HH:MM)
 
 Optional Args:
+    --quality (-q): Quality of stream to record
     --filename (-f): Name to save recorded file as
     --reconnect (-r): Try to record stream again if it ends before this time
     --shutdown (-s): Shutdown computer when recording is finished
@@ -25,7 +26,7 @@ def strtime_datetime(str_time):
     """Compare argument to current time to calculate datetime it represents.
 
     Args:
-        str_time: Local time in HH:MM format where ':' can be any separator
+        str_time: Local 24hr time in HH:MM format - ':' can be any separator
 
     Return:
         Datetime object
@@ -46,27 +47,31 @@ def strtime_datetime(str_time):
     return dt_time
 
 
-def start_recording(channel, path, filename):
+def record(channel, path, quality, filename):
     """Start recording channel using Streamlink and save file to path.
 
     Args:
         channel: The part after 'twitch.tv/' of the desired channel
         path: Absolute file path to the save directory
-        filename: Name to save the file under with no extension specified
+        quality: Quality of recording - if none default from settings is used
+        filename: Name to save recording as with no extension specified -
+                  if None a timestamped default using channel name is used
 
     """
     wait = get_setting('Connecting', 'Wait')
     attempts = get_setting('Connecting', 'Attempts')
     rec_attempts = get_setting('Recording', 'Attempts')
-    quality = get_setting('Recording', 'Quality')
 
-    print('Starting recording of {}'.format(channel))
-
+    # Processed here so reconnect recordings have default timestamp option
     if not filename:
         file_time = dt.datetime.now().strftime('%m-%d(%H-%M)')
         filename = '{}-{}.ts'.format(channel, file_time)
     else:
         filename += '.ts'
+
+    if not quality:
+        quality = get_setting('Recording', 'Quality')
+
     subprocess.call([
         'streamlink', 'twitch.tv/{}'.format(channel),
         quality, '-o', '{}/{}'.format(path, filename),
@@ -88,11 +93,15 @@ def main():
     """Parse command line arguments and coordinate stream recording."""
     parser = argparse.ArgumentParser(description="Twitch stream recorder")
     parser.add_argument('channel', help="Name of the Twitch channel to record")
-    parser.add_argument('start_time', help="Time to start recording (HH:MM)")
+    parser.add_argument('start_time',
+                        help="Local 24hr time to start recording (HH:MM)")
     parser.add_argument('-f', '--filename', help="Name to save recording as")
+    parser.add_argument('-q', '--quality',
+                        help=("Set recording quality to a Streamlink "
+                              "compatible value e.g. 'best', 720p"))
     parser.add_argument('-r', '--reconnect',
                         help=("Attempt to reconnect and record stream if it "
-                              "disconnects before this time (HH:MM)"))
+                              "disconnects before local 24hr time (HH:MM)"))
     parser.add_argument('-s', '--shutdown', action='store_true',
                         help="Shutdown computer when stream finishes")
 
@@ -115,11 +124,12 @@ def main():
     while dt.datetime.now() < start_dt:
         time.sleep(10)
 
-    start_recording(channel, path, args.filename)
+    print('Starting recording of {}'.format(channel))
+    record(channel, path, args.quality, args.filename)
 
     if args.reconnect:
         while dt.datetime.now() < end_dt:
-            start_recording(channel, path, None)
+            record(channel, path, args.quality, None)
 
     if args.shutdown:
         subprocess.call(['shutdown'])
