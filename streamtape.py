@@ -22,6 +22,35 @@ import subprocess
 import time
 
 
+def parse_arguments():
+    """Parse command line arguments and return a dictionary of their values."""
+    parser = argparse.ArgumentParser(description="Twitch stream recorder")
+    parser.add_argument('channel', help="Name of the Twitch channel to record")
+    parser.add_argument('start_time',
+                        help="Local 24hr time to start recording (HH:MM)")
+    parser.add_argument('-f', '--filename', help="Name to save recording as")
+    parser.add_argument('-q', '--quality',
+                        help=("Set recording quality to a Streamlink "
+                              "compatible value e.g. 'best', 720p"))
+    parser.add_argument('-r', '--reconnect',
+                        help=("Attempt to reconnect and record stream if it "
+                              "disconnects before local 24hr time (HH:MM)"))
+    parser.add_argument('-s', '--shutdown', action='store_true',
+                        help="Shutdown computer when stream finishes")
+
+    args = parser.parse_args()
+    return vars(args)
+
+
+def get_setting(section, option):
+    """Return value of the option in specified section of the settings file."""
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    value = config.get(section, option)
+
+    return value
+
+
 def strtime_datetime(str_time):
     """Compare argument to current time to calculate datetime it represents.
 
@@ -80,56 +109,33 @@ def record(channel, path, quality, filename):
     ])
 
 
-def get_setting(section, option):
-    """Return value of the option in specified section of the settings file."""
-    config = configparser.ConfigParser()
-    config.read('settings.ini')
-    value = config.get(section, option)
-
-    return value
-
-
 def main():
-    """Parse command line arguments and coordinate stream recording."""
-    parser = argparse.ArgumentParser(description="Twitch stream recorder")
-    parser.add_argument('channel', help="Name of the Twitch channel to record")
-    parser.add_argument('start_time',
-                        help="Local 24hr time to start recording (HH:MM)")
-    parser.add_argument('-f', '--filename', help="Name to save recording as")
-    parser.add_argument('-q', '--quality',
-                        help=("Set recording quality to a Streamlink "
-                              "compatible value e.g. 'best', 720p"))
-    parser.add_argument('-r', '--reconnect',
-                        help=("Attempt to reconnect and record stream if it "
-                              "disconnects before local 24hr time (HH:MM)"))
-    parser.add_argument('-s', '--shutdown', action='store_true',
-                        help="Shutdown computer when stream finishes")
-
-    args = parser.parse_args()
+    """Coordinate recording of stream."""
+    args = parse_arguments()
 
     path = get_setting('Download', 'Path')
     if not os.path.isdir(path):
         os.makedirs(path, exist_ok=True)
 
-    channel = args.channel
-    start_time = args.start_time
+    channel = args['channel']
+    start_time = args['start_time']
 
     print("Recording of {} will begin around {}".format(channel, start_time))
 
     # Calculate before recording so it isn't set to next day when stream ends
-    if args.reconnect:
-        end_dt = strtime_datetime(args.reconnect)
+    if args['reconnect']:
+        end_dt = strtime_datetime(args['reconnect'])
 
     start_dt = strtime_datetime(start_time)
     while dt.datetime.now() < start_dt:
         time.sleep(10)
 
     print('Starting recording of {}'.format(channel))
-    record(channel, path, args.quality, args.filename)
+    record(channel, path, args['quality'], args['filename'])
 
     if args.reconnect:
         while dt.datetime.now() < end_dt:
-            record(channel, path, args.quality, None)
+            record(channel, path, args['quality'], None)
 
     if args.shutdown:
         subprocess.call(['shutdown'])
