@@ -10,7 +10,7 @@ Optional Args:
     --quality (-q): Quality of stream to record
     --filename (-f): Name to save recorded file as
     --reconnect (-r): Try to record stream again if it ends before this time
-    --poweroff (-p): Poweroff computer when recording is finished
+    --shutdown (-p): Shutdown computer when recording is finished
 
 """
 
@@ -35,8 +35,8 @@ def parse_arguments():
     parser.add_argument('-r', '--reconnect',
                         help=("Attempt to reconnect and record stream if it "
                               "disconnects before local 24hr time (HH:MM)"))
-    parser.add_argument('-p', '--poweroff', action='store_true',
-                        help="Poweroff computer when stream finishes")
+    parser.add_argument('-s', '--shutdown', action='store_true',
+                        help="shutdown computer when stream finishes")
 
     args = parser.parse_args()
     return vars(args)
@@ -137,7 +137,7 @@ def main():
         while dt.datetime.now() < end_dt:
             record(channel, path, args['quality'], None)
 
-    if args['poweroff']:
+    if args['shutdown']:
         subprocess.call(['shutdown'])
 
 
