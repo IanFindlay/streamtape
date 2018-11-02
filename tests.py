@@ -5,26 +5,23 @@
 import configparser
 import datetime as dt
 from datetime import timedelta
-import io
 import json
 from json import JSONDecodeError
 import unittest
-from unittest import mock
+from unittest.mock import patch, mock_open
 
 import streamtape
 
 
+@patch('builtins.print')
+@patch('streamtape.read_quickstreams')
 class TestListQuickstreams(unittest.TestCase):
 
-    @mock.patch('builtins.print')
-    @mock.patch('streamtape.read_quickstreams')
     def test_error_printed_if_quickstreams_empty(self, mock_read, mock_print):
         mock_read.return_value = {}
         streamtape.list_quickstreams()
         mock_print.assert_called_with("No Quickstream bookmarks found.")
 
-    @mock.patch('builtins.print')
-    @mock.patch('streamtape.read_quickstreams')
     def test_json_printed_if_quickstreams_exist(self, mock_read, mock_print):
         mock_read.return_value = {'print_this': {'print': 'this'}}
         streamtape.list_quickstreams()
@@ -32,81 +29,77 @@ class TestListQuickstreams(unittest.TestCase):
         mock_print.assert_called_with(expected)
 
 
+@patch('streamtape.read_quickstreams')
 class TestDeleteQuickstream(unittest.TestCase):
 
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
-    def test_bookmarked_name_deletes_correctly(self, mock_read, mock_save):
+    @patch('streamtape.save_quickstreams')
+    def test_bookmarked_name_deletes_correctly(self, mock_save, mock_read):
         mock_read.return_value = {'to_del': {'to': 'delete'},
                                   'to_keep': {'to': 'keep'}}
         streamtape.delete_quickstream('to_del')
         mock_save.assert_called_with({'to_keep': {'to': 'keep'}})
 
-    @mock.patch('builtins.print')
-    @mock.patch('streamtape.read_quickstreams')
-    def test_wrong_name_prints_help_message(self, mock_read, mock_print):
+    @patch('builtins.print')
+    def test_wrong_name_prints_help_message(self, mock_print, mock_read):
         mock_read.return_value = {'name_key': {'key': 'value'}}
         streamtape.delete_quickstream('wrong')
         mock_print.assert_called_with(
             "No Quickstream under that name (-ls to list them, -h for help)"
         )
 
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
-    def test_wrong_name_does_not_call_save(self, mock_read, mock_save):
+    @patch('streamtape.save_quickstreams')
+    def test_wrong_name_does_not_call_save(self, mock_save, mock_read):
         mock_read.return_value = {'name_key': {'key': 'value'}}
         streamtape.delete_quickstream('wrong')
         assert not mock_save.called
 
 
+@patch('streamtape.read_quickstreams')
 class TestLoadQuickstream(unittest.TestCase):
 
-    @mock.patch('streamtape.read_quickstreams')
     def test_bookmarked_name_returns_correctly(self, mock_read):
         mock_read.return_value = {'name_key': {'key': 'value'}}
         loaded_quickstream = streamtape.load_quickstream('name_key')
         self.assertEqual({'key': 'value'}, loaded_quickstream)
 
-    @mock.patch('streamtape.read_quickstreams')
     def test_wrong_name_calls_sys_exit(self, mock_read):
         mock_read.return_value = {'name_key': {'key': 'value'}}
         self.assertRaises(SystemExit, streamtape.load_quickstream, 'wrong')
 
 
+@patch('builtins.open')
 class TestReadQuickstreams(unittest.TestCase):
 
-    @mock.patch('builtins.open')
     def test_returns_right_data_if_quickstreams_present(self, mock_in_open):
         mock_written = json.dumps({'read_this': {'read': 'this'}}, indent=4)
         mock_loaded = json.loads(mock_written)
-        with mock.mock_open(mock_in_open, read_data=mock_written) as __:
+        with mock_open(mock_in_open, read_data=mock_written) as __:
             result = streamtape.read_quickstreams()
         self.assertEqual(result, mock_loaded)
 
-    @mock.patch('builtins.open')
     def test_returns_blank_dict_if_no_quickstreams_saved(self, mock_in_open):
-        with mock.mock_open(mock_in_open, read_data='') as __:
+        with mock_open(mock_in_open, read_data='') as __:
             result = streamtape.read_quickstreams()
         self.assertEqual(result, {})
 
-    @mock.patch('builtins.open')
     def test_raises_decode_exception_if_no_quickstreams_(self, mock_in_open):
-        with mock.mock_open(mock_in_open, read_data='') as __:
+        with mock_open(mock_in_open, read_data='') as __:
             streamtape.read_quickstreams()
         self.assertRaises(JSONDecodeError)
 
-    @mock.patch('builtins.open')
     def test_returns_blank_dictionary_if_no_file_found(self, mock_in_open):
         mock_in_open.side_effect = FileNotFoundError
         result = streamtape.read_quickstreams()
         self.assertEqual(result, {})
 
 
+@patch('builtins.input')
+@patch('streamtape.save_quickstreams')
+@patch('streamtape.read_quickstreams')
 class TestCreateBookmark(unittest.TestCase):
 
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
-    def test_unused_name_calls_save_with_right_arg(self, mock_read, mock_save):
+    def test_unused_name_calls_save_with_right_arg(self, mock_read,
+                                                   mock_save, mock_input):
         test_record_settings = {'bookmark': 'unused'}
         mock_read.return_value = {'saved': {'already': 'saved'}}
         streamtape.create_bookmark(test_record_settings)
@@ -114,9 +107,6 @@ class TestCreateBookmark(unittest.TestCase):
             {'saved': {'already': 'saved'}, 'unused': {'bookmark': None}}
         )
 
-    @mock.patch('builtins.input')
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
     def test_used_name_prompts_for_new_name(self, mock_read,
                                             mock_save, mock_input):
         test_record_settings = {'bookmark': 'used'}
@@ -125,9 +115,6 @@ class TestCreateBookmark(unittest.TestCase):
 
         mock_input.assert_called()
 
-    @mock.patch('builtins.input')
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
     def test_used_name_saves_if_input_given_unused_name(self, mock_read,
                                                         mock_save, mock_input):
         test_record_settings = {'bookmark': 'used'}
@@ -138,9 +125,6 @@ class TestCreateBookmark(unittest.TestCase):
         mock_save.assert_called_with({'used': {'already': 'used'},
                                       'not_used': {'bookmark': None}})
 
-    @mock.patch('builtins.input')
-    @mock.patch('streamtape.save_quickstreams')
-    @mock.patch('streamtape.read_quickstreams')
     def test_used_name_prompts_until_unused_name_given(self, mock_read,
                                                        mock_save, mock_input):
         test_record_settings = {'bookmark': 'used'}
@@ -173,34 +157,28 @@ class TestTimeToDatetime(unittest.TestCase):
         self.assertEqual(now.day + 1, start.day)
 
 
+@patch('subprocess.call')
+@patch('streamtape.os')
 class TestRecordStream(unittest.TestCase):
 
-    @mock.patch('subprocess.call')
-    @mock.patch('streamtape.os')
     def test_quality_arg_used_if_given(self, mock_os, mock_sub):
         streamtape.record_stream('channel', 'arg_quality', None)
         sub_call = str(mock_sub.call_args)
         self.assertTrue('arg_quality' in sub_call)
 
-    @mock.patch('subprocess.call')
-    @mock.patch('streamtape.get_setting')
-    @mock.patch('streamtape.os')
-    def test_if_quality_none_default_used(self, mock_os, mock_get, mock_sub):
+    @patch('streamtape.get_setting')
+    def test_if_quality_none_default_used(self, mock_get, mock_os, mock_sub):
         mock_get.side_effect = ['def_quality', 'path', 'wait',
                                 'attempts', 'rec_attempts']
         streamtape.record_stream('channel', None, None)
         sub_call = str(mock_sub.call_args)
         self.assertTrue('def_quality' in sub_call)
 
-    @mock.patch('subprocess.call')
-    @mock.patch('streamtape.os')
     def test_if_filename_is_not_none_it_is_used(self, mock_os, mock_sub):
         streamtape.record_stream('channel', None, 'given_filename')
         sub_call = str(mock_sub.call_args)
         self.assertTrue('given_filename.ts' in sub_call)
 
-    @mock.patch('subprocess.call')
-    @mock.patch('streamtape.os')
     def test_if_filename_is_none_timestamped_is_used(self, mock_os, mock_sub):
         streamtape.record_stream('channel', None, None)
         test_file_time = dt.datetime.now().strftime('%m-%d(%H-%M)')
